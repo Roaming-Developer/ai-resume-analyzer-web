@@ -14,6 +14,8 @@ import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { useApiKeyError } from "@/hooks/useApiKeyError";
+import { ApiKeyModal } from "./ApiKeyModal";
 
 interface RewriteModalProps {
   open: boolean;
@@ -34,6 +36,13 @@ export function RewriteModal({
   const [improvedText, setImprovedText] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const {
+    showApiKeyModal,
+    setShowApiKeyModal,
+    errorType,
+    errorMessage,
+    handleError,
+  } = useApiKeyError();
 
   const handleRewrite = async () => {
     if (!sectionText.trim()) {
@@ -48,9 +57,12 @@ export function RewriteModal({
       setReasoning(response.reasoning);
       toast.success("Text rewritten successfully!");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to rewrite text"
-      );
+      // Check if it's an API key/quota error
+      if (!handleError(error)) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to rewrite text"
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -72,75 +84,86 @@ export function RewriteModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Rewrite Summary</DialogTitle>
-          <DialogDescription>
-            Enter the section you want to rewrite to better match the job
-            description.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <ApiKeyModal
+        open={showApiKeyModal}
+        onOpenChange={setShowApiKeyModal}
+        errorType={errorType}
+        errorMessage={errorMessage}
+      />
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Rewrite Summary</DialogTitle>
+            <DialogDescription>
+              Enter the section you want to rewrite to better match the job
+              description.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="section-text">Original Text</Label>
-            <Textarea
-              id="section-text"
-              value={sectionText}
-              onChange={(e) => setSectionText(e.target.value)}
-              placeholder="Paste the section you want to improve..."
-              rows={6}
-            />
-          </div>
-
-          <Button
-            onClick={handleRewrite}
-            disabled={isLoading || !sectionText.trim()}
-            className="w-full"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Rewriting...
-              </>
-            ) : (
-              "Rewrite with AI"
-            )}
-          </Button>
-
-          {improvedText && (
-            <div className="space-y-4 rounded-lg border p-4">
-              <div className="space-y-2">
-                <Label>Improved Text</Label>
-                <Textarea
-                  value={improvedText}
-                  readOnly
-                  rows={6}
-                  className="bg-muted"
-                />
-              </div>
-
-              {reasoning && (
-                <div className="space-y-2">
-                  <Label>Reasoning</Label>
-                  <p className="text-sm text-muted-foreground">{reasoning}</p>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCopy} className="flex-1">
-                  Copy
-                </Button>
-                <Button onClick={handleUse} className="flex-1">
-                  Use This Text
-                </Button>
-              </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="section-text">Original Text</Label>
+              <Textarea
+                id="section-text"
+                value={sectionText}
+                onChange={(e) => setSectionText(e.target.value)}
+                placeholder="Paste the section you want to improve..."
+                rows={6}
+              />
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            <Button
+              onClick={handleRewrite}
+              disabled={isLoading || !sectionText.trim()}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Rewriting...
+                </>
+              ) : (
+                "Rewrite with AI"
+              )}
+            </Button>
+
+            {improvedText && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <div className="space-y-2">
+                  <Label>Improved Text</Label>
+                  <Textarea
+                    value={improvedText}
+                    readOnly
+                    rows={6}
+                    className="bg-muted"
+                  />
+                </div>
+
+                {reasoning && (
+                  <div className="space-y-2">
+                    <Label>Reasoning</Label>
+                    <p className="text-sm text-muted-foreground">{reasoning}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleCopy}
+                    className="flex-1"
+                  >
+                    Copy
+                  </Button>
+                  <Button onClick={handleUse} className="flex-1">
+                    Use This Text
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
-

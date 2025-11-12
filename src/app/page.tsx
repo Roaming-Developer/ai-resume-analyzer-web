@@ -10,6 +10,8 @@ import { Loader2, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
+import { useApiKeyError } from "@/hooks/useApiKeyError";
+import { ApiKeyModal } from "@/components/ApiKeyModal";
 
 export default function Home() {
   const router = useRouter();
@@ -17,6 +19,7 @@ export default function Home() {
   const [jobDescription, setJobDescription] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { setLastAnalysis } = useAppStore();
+  const { showApiKeyModal, setShowApiKeyModal, errorType, errorMessage, handleError } = useApiKeyError();
 
   const handleAnalyze = async () => {
     if (!resumeFile) {
@@ -36,21 +39,31 @@ export default function Home() {
       toast.success("Analysis completed successfully!");
       router.push(`/result/${result.result_id}`);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to analyze resume"
-      );
+      // Check if it's an API key/quota error
+      if (!handleError(error)) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to analyze resume"
+        );
+      }
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   return (
-    <div className="container mx-auto min-h-screen px-4 py-12">
-      {/* Background gradient */}
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]" />
-      
-      <div className="mx-auto max-w-3xl space-y-8">
+    <>
+      <ApiKeyModal
+        open={showApiKeyModal}
+        onOpenChange={setShowApiKeyModal}
+        errorType={errorType}
+        errorMessage={errorMessage}
+      />
+      <div className="container mx-auto min-h-screen px-4 py-12">
+        {/* Background gradient */}
+        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
+        <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]" />
+        
+        <div className="mx-auto max-w-3xl space-y-8">
         {/* Header */}
         <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="flex items-center justify-center gap-3 mb-2">
@@ -139,5 +152,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </>
   );
 }

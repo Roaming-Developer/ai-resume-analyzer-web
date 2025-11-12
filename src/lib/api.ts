@@ -36,6 +36,18 @@ export interface ApiError {
   message?: string;
 }
 
+export interface OpenAIHealthResponse {
+  status: "healthy" | "error";
+  message: string;
+  model?: string;
+  error_type?:
+    | "authentication_error"
+    | "rate_limit_error"
+    | "api_error"
+    | "unknown_error";
+  error_detail?: string;
+}
+
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -69,16 +81,27 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Helper to get API key from store
+let getApiKey: (() => string | null) | null = null;
+export const setApiKeyGetter = (getter: () => string | null) => {
+  getApiKey = getter;
+};
+
 // API functions
 export const api = {
   // Analyze resume
   analyze: async (
     resume: File,
-    jobDescription: string
+    jobDescription: string,
+    apiKey?: string
   ): Promise<AnalyzeResponse> => {
     const formData = new FormData();
     formData.append("resume", resume);
     formData.append("job_description", jobDescription);
+    const key = apiKey || getApiKey?.();
+    if (key) {
+      formData.append("api_key", key);
+    }
 
     const response = await apiClient.post<AnalyzeResponse>(
       "/analyze",
@@ -102,12 +125,17 @@ export const api = {
   compare: async (
     resume1: File,
     resume2: File,
-    jobDescription: string
+    jobDescription: string,
+    apiKey?: string
   ): Promise<CompareResponse> => {
     const formData = new FormData();
     formData.append("resume_1", resume1);
     formData.append("resume_2", resume2);
     formData.append("job_description", jobDescription);
+    const key = apiKey || getApiKey?.();
+    if (key) {
+      formData.append("api_key", key);
+    }
 
     const response = await apiClient.post<CompareResponse>(
       "/compare",
@@ -124,11 +152,14 @@ export const api = {
   // Rewrite section
   rewrite: async (
     sectionText: string,
-    jobDescription: string
+    jobDescription: string,
+    apiKey?: string
   ): Promise<RewriteResponse> => {
+    const key = apiKey || getApiKey?.();
     const response = await apiClient.post<RewriteResponse>("/rewrite", {
       section_text: sectionText,
       job_description: jobDescription,
+      ...(key && { api_key: key }),
     });
     return response.data;
   },
@@ -136,6 +167,26 @@ export const api = {
   // Health check
   health: async (): Promise<{ status: string }> => {
     const response = await apiClient.get<{ status: string }>("/health");
+    return response.data;
+  },
+
+  // OpenAI health check
+  checkOpenAIHealth: async (apiKey?: string): Promise<OpenAIHealthResponse> => {
+    const key = apiKey || getApiKey?.();
+    const formData = new URLSearchParams();
+    if (key) {
+      formData.append("api_key", key);
+    }
+
+    const response = await apiClient.post<OpenAIHealthResponse>(
+      "/health/openai",
+      formData,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
     return response.data;
   },
 };

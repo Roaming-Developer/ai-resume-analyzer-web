@@ -11,6 +11,8 @@ import { Loader2, ArrowLeft, Trophy } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useApiKeyError } from "@/hooks/useApiKeyError";
+import { ApiKeyModal } from "@/components/ApiKeyModal";
 
 export default function ComparePage() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function ComparePage() {
     better_resume: "resume_1" | "resume_2";
     analysis_summary: string;
   } | null>(null);
+  const { showApiKeyModal, setShowApiKeyModal, errorType, errorMessage, handleError } = useApiKeyError();
 
   const handleCompare = async () => {
     if (!resume1 || !resume2) {
@@ -42,9 +45,12 @@ export default function ComparePage() {
       setComparison(result);
       toast.success("Comparison completed!");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to compare resumes"
-      );
+      // Check if it's an API key/quota error
+      if (!handleError(error)) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to compare resumes"
+        );
+      }
     } finally {
       setIsComparing(false);
     }
@@ -57,8 +63,15 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="container mx-auto min-h-screen px-4 py-12">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <>
+      <ApiKeyModal
+        open={showApiKeyModal}
+        onOpenChange={setShowApiKeyModal}
+        errorType={errorType}
+        errorMessage={errorMessage}
+      />
+      <div className="container mx-auto min-h-screen px-4 py-12">
+        <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -185,8 +198,9 @@ export default function ComparePage() {
             </Card>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
