@@ -8,6 +8,12 @@ interface AppState {
   clearLastAnalysis: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  apiKey: string | null;
+  setApiKey: (key: string | null) => void;
+  openAIHealthStatus: "healthy" | "error" | "unknown" | null;
+  setOpenAIHealthStatus: (
+    status: "healthy" | "error" | "unknown" | null
+  ) => void;
 }
 
 // Get system preference
@@ -52,6 +58,10 @@ export const useAppStore = create<AppState>()(
             }
             return { isDarkMode: newDarkMode };
           }),
+        apiKey: null,
+        setApiKey: (key) => set({ apiKey: key }),
+        openAIHealthStatus: null,
+        setOpenAIHealthStatus: (status) => set({ openAIHealthStatus: status }),
       };
     },
     {
@@ -59,6 +69,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         lastAnalysis: state.lastAnalysis,
         isDarkMode: state.isDarkMode,
+        apiKey: state.apiKey,
       }),
       onRehydrateStorage: () => (state) => {
         // Sync with system preference on first load if no stored preference
@@ -77,4 +88,3 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
-
