@@ -1,65 +1,143 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { UploadBox } from "@/components/UploadBox";
+import { JDInput } from "@/components/JDInput";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Loader2, Sparkles } from "lucide-react";
+import { api } from "@/lib/api";
+import { useAppStore } from "@/store/useAppStore";
+import { toast } from "sonner";
 
 export default function Home() {
+  const router = useRouter();
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [jobDescription, setJobDescription] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { setLastAnalysis } = useAppStore();
+
+  const handleAnalyze = async () => {
+    if (!resumeFile) {
+      toast.error("Please upload your resume");
+      return;
+    }
+
+    if (!jobDescription.trim()) {
+      toast.error("Please enter a job description");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await api.analyze(resumeFile, jobDescription);
+      setLastAnalysis(result);
+      toast.success("Analysis completed successfully!");
+      router.push(`/result/${result.result_id}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to analyze resume"
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="container mx-auto min-h-screen px-4 py-12">
+      {/* Background gradient */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]" />
+      
+      <div className="mx-auto max-w-3xl space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="relative">
+              <Sparkles className="h-10 w-10 text-primary animate-pulse" />
+              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+            </div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+              AI Resume Analyzer
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Get instant feedback on how well your resume matches a job
+            description. Powered by AI to help you land your dream job.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        {/* Main Form */}
+        <Card className="p-8 space-y-6 border-2 shadow-xl bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Upload Your Resume
+            </h2>
+            <UploadBox
+              onFileSelect={(file) => setResumeFile(file)}
+              accept=".pdf"
+              maxSize={10}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <JDInput
+            value={jobDescription}
+            onChange={setJobDescription}
+            placeholder="Paste the job description here..."
+          />
+
+          <Button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !resumeFile || !jobDescription.trim()}
+            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+            size="lg"
           >
-            Documentation
-          </a>
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-5 w-5" />
+                Analyze Resume
+              </>
+            )}
+          </Button>
+        </Card>
+
+        {/* Features */}
+        <div className="grid gap-6 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+          <Card className="p-6 border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 group">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">📊</span>
+            </div>
+            <h3 className="font-semibold mb-2 text-lg">ATS Score</h3>
+            <p className="text-sm text-muted-foreground">
+              Get a comprehensive ATS compatibility score to understand your resume's performance
+            </p>
+          </Card>
+          <Card className="p-6 border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 group">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">🔍</span>
+            </div>
+            <h3 className="font-semibold mb-2 text-lg">Keyword Analysis</h3>
+            <p className="text-sm text-muted-foreground">
+              See which keywords match and which are missing from your resume
+            </p>
+          </Card>
+          <Card className="p-6 border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 group">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">💡</span>
+            </div>
+            <h3 className="font-semibold mb-2 text-lg">AI Suggestions</h3>
+            <p className="text-sm text-muted-foreground">
+              Receive personalized improvement recommendations powered by AI
+            </p>
+          </Card>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
